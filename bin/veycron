@@ -14,8 +14,14 @@ set -euo pipefail
 VEYCRON_VERSION="1.0.0"
 VEYCRON_REPO="https://github.com/Pushpendra-999/veycron.git"
 
-# Resolve installation directory
-VEYCRON_BIN="$(cd "$(dirname "$0")" && pwd)"
+# Resolve installation directory (resolving symlinks)
+SOURCE="${BASH_SOURCE[0]}"
+while [[ -L "$SOURCE" ]]; do
+    DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
+    SOURCE="$(readlink "$SOURCE")"
+    [[ "$SOURCE" != /* ]] && SOURCE="${DIR}/${SOURCE}"
+done
+VEYCRON_BIN="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
 VEYCRON_HOME="$(dirname "$VEYCRON_BIN")"
 VEYCRON_LIB="${VEYCRON_HOME}/lib"
 
