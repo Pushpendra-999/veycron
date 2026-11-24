@@ -16,12 +16,12 @@ cmd_smtp_setup() {
     local host="" port="" username="" password="" from_email="" use_tls=""
 
     echo -e "  ${BOLD}Common SMTP servers:${NC}"
-    echo -e "    ${DIM}Gmail:        smtp.gmail.com (port 587) — use App Password${NC}"
+    echo -e "    ${DIM}Gmail:        smtp.gmail.com (port 587 for STARTTLS, 465 for SSL) — use App Password${NC}"
     echo -e "    ${DIM}Outlook:      smtp.office365.com (port 587)${NC}"
-    echo -e "    ${DIM}SendGrid:     smtp.sendgrid.net (port 587)${NC}"
-    echo -e "    ${DIM}AWS SES:      email-smtp.<region>.amazonaws.com (port 587)${NC}"
-    echo -e "    ${DIM}Mailgun:      smtp.mailgun.org (port 587)${NC}"
-    echo -e "    ${DIM}Zoho:         smtp.zoho.com (port 587)${NC}"
+    echo -e "    ${DIM}SendGrid:     smtp.sendgrid.net (port 587 or 465)${NC}"
+    echo -e "    ${DIM}AWS SES:      email-smtp.<region>.amazonaws.com (port 587 or 465)${NC}"
+    echo -e "    ${DIM}Mailgun:      smtp.mailgun.org (port 587 or 465)${NC}"
+    echo -e "    ${DIM}Zoho:         smtp.zoho.com (port 587 or 465)${NC}"
     echo ""
 
     # Load existing values as defaults
@@ -179,6 +179,7 @@ _send_email() {
     local to="$1"
     local subject="$2"
     local body="$3"
+    local project="${4:-system}"
 
     local host port username password from_email tls
     host="$(json_get "$VEYCRON_CONFIG_FILE" '.smtp.host')"
@@ -206,28 +207,59 @@ Content-Type: text/plain; charset=UTF-8
 $(echo -e "$body")
 EMAIL
 
+    # Determine scheme: Port 465 uses smtps:// (implicit TLS); 587/25 use smtp://
+    local scheme="smtp"
+    if [[ "$port" == "465" ]]; then
+        scheme="smtps"
+    fi
+
     # Build curl command
     local curl_opts=(
-        --url "smtp://${host}:${port}"
+        --url "${scheme}://${host}:${port}"
         --mail-from "$from_email"
         --mail-rcpt "$to"
         --upload-file "$email_file"
         --user "${username}:${password}"
+        --crlf
+        --connect-timeout 20
+        --max-time 45
         --silent
         --show-error
     )
 
-    if [[ "$tls" == "true" ]]; then
+    if [[ "$tls" == "true" && "$scheme" != "smtps" ]]; then
         curl_opts+=(--ssl-reqd)
     fi
 
-    if curl "${curl_opts[@]}" 2>&1; then
-        rm -f "$email_file"
+    local curl_output=""
+    local curl_status=0
+    curl_output="$(curl "${curl_opts[@]}" 2>&1)" || curl_status=$?
+
+    rm -f "$email_file"
+
+    if [[ $curl_status -eq 0 ]]; then
+        log_to_file "INFO" "Email delivered to ${to}" "$project"
         return 0
     else
-        local err=$?
-        rm -f "$email_file"
-        log_debug "curl SMTP exit code: ${err}"
+        log_to_file "ERROR" "curl SMTP error (code ${curl_status}): ${curl_output}" "$project"
+        case "$curl_status" in
+            56)
+                log_warn "Email failed: curl 56 response reading failed."
+                log_warn "Hint: If using port 465, ensure TLS is enabled. If using port 587, check STARTTLS."
+                ;;
+            67)
+                log_warn "Email failed: SMTP authentication failed. Check credentials/App Password."
+                ;;
+            28)
+                log_warn "Email failed: Connection timed out. Port ${port} may be blocked by your provider (e.g. AWS EC2 blocks port 25)."
+                ;;
+            6)
+                log_warn "Email failed: Could not resolve SMTP host: ${host}"
+                ;;
+            *)
+                log_warn "Email delivery failed to ${to} (curl error ${curl_status}): ${curl_output}"
+                ;;
+        esac
         return 1
     fi
 }
@@ -316,13 +348,23 @@ send_notification() {
         body+="— veycron"
     fi
 
-    # Send to each recipient
+    # Send to each recipient safely (non-fatal if email fails)
+    local sent_count=0
+    local fail_count=0
     while IFS= read -r email; do
         if [[ -n "$email" ]]; then
             log_debug "Sending notification to: ${email}"
-            _send_email "$email" "$subject" "$body"
+            if _send_email "$email" "$subject" "$body" "$project_name"; then
+                ((sent_count++))
+            else
+                ((fail_count++))
+            fi
         fi
     done <<< "$emails"
 
-    log_to_file "INFO" "Notification sent (${status}) to $(echo "$emails" | wc -l | tr -d ' ') recipient(s)" "$project_name"
+    if (( fail_count > 0 )); then
+        log_to_file "WARN" "Email notification summary: ${sent_count} sent, ${fail_count} failed" "$project_name"
+    else
+        log_to_file "INFO" "Notification sent (${status}) to ${sent_count} recipient(s)" "$project_name"
+    fi
 }

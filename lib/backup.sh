@@ -111,12 +111,12 @@ cmd_run_backup() {
             cleanup_old_backups "$project_name" "$retention"
         fi
 
-        # Send success notification
-        send_notification "$project_name" "success" "$remote_path" "$backup_size"
+        # Send success notification (non-blocking)
+        send_notification "$project_name" "success" "$remote_path" "$backup_size" || true
     else
         log_both "ERROR" "Failed to upload backup to R2" "$project_name"
         update_project_field "$project_name" '.backup.last_status' 'failed'
-        send_notification "$project_name" "failed" "" "$backup_size"
+        send_notification "$project_name" "failed" "" "$backup_size" || true
     fi
 
     # Cleanup temp files
