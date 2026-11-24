@@ -98,15 +98,24 @@ BANNER
     check_deps
 
     # ── Clone or update ──────────────────────────────────────────────────
-    if [[ -d "$INSTALL_DIR" ]]; then
+    if [[ -d "$INSTALL_DIR/.git" ]]; then
         info "Updating existing installation from ${REPO_URL}..."
         cd "$INSTALL_DIR"
-        git fetch origin "$BRANCH" --quiet
-        git reset --hard "origin/${BRANCH}" --quiet
+        local current_branch
+        current_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "$BRANCH")"
+        git fetch origin "$current_branch" --quiet 2>/dev/null || git fetch origin --quiet
+        git reset --hard "origin/${current_branch}" --quiet 2>/dev/null || git reset --hard origin/HEAD --quiet
         success "Updated to latest version."
     else
+        # Remove empty or broken directory if present
+        if [[ -d "$INSTALL_DIR" ]]; then
+            rm -rf "$INSTALL_DIR"
+        fi
         info "Installing veycron from ${REPO_URL} to ${INSTALL_DIR}..."
-        git clone --branch "$BRANCH" --depth 1 "$REPO_URL" "$INSTALL_DIR" --quiet
+        if ! git clone --branch "$BRANCH" --depth 1 "$REPO_URL" "$INSTALL_DIR" --quiet 2>/dev/null; then
+            # Fallback to cloning default branch without --branch restriction
+            git clone --depth 1 "$REPO_URL" "$INSTALL_DIR" --quiet
+        fi
         success "Repository cloned."
     fi
 
