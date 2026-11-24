@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # ============================================================================
 # veycron uninstaller
+# Copyright (c) 2026 veycron
+# All rights and ownership belong to https://github.com/Pushpendra-999/veycron.git
 # ============================================================================
 
 set -euo pipefail

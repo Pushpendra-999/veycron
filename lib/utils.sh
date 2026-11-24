@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # ============================================================================
 # utils.sh - Utility functions for veycron
+# Copyright (c) 2026 veycron
+# All rights and ownership belong to https://github.com/Pushpendra-999/veycron.git
 # ============================================================================
 
 # ── Colors ───────────────────────────────────────────────────────────────────
@@ -48,6 +50,7 @@ print_banner() {
 BANNER
     echo -e "${NC}"
     echo -e "  ${DIM}Automated Database Backup to Cloudflare R2 — v${VEYCRON_VERSION}${NC}"
+    echo -e "  ${DIM}Copyright (c) 2026 veycron — https://github.com/Pushpendra-999/veycron.git${NC}"
     echo ""
 }
 

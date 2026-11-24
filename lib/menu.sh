@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # ============================================================================
 # menu.sh - Interactive menu for veycron
+# Copyright (c) 2026 veycron
+# All rights and ownership belong to https://github.com/Pushpendra-999/veycron.git
 # ============================================================================
 
 cmd_menu() {
@@ -26,6 +28,7 @@ cmd_menu() {
         echo -e "    ${BOLD}11)${NC} Delete Project"
         echo ""
         echo -e "    ${BOLD}12)${NC} System Doctor"
+        echo -e "    ${BOLD}13)${NC} Terms & Policy (Copyright)"
         echo ""
         echo -e "    ${BOLD}0)${NC}  Exit"
         echo ""
@@ -64,6 +67,7 @@ cmd_menu() {
                 cmd_delete_project "$proj"
                 ;;
             12) cmd_doctor ;;
+            13) cmd_policy ;;
             0|q|quit|exit)
                 echo -e "  ${DIM}Goodbye!${NC}"
                 return 0

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # ============================================================================
 # veycron - Automated Database Backup Service for Cloudflare R2
+# Copyright (c) 2026 veycron
+# All rights and ownership belong to https://github.com/Pushpendra-999/veycron.git
 # ============================================================================
 # A self-contained CLI service for scheduling MongoDB and PostgreSQL
 # database backups to Cloudflare R2 object storage with email notifications.
@@ -10,6 +12,7 @@ set -euo pipefail
 
 # Version
 VEYCRON_VERSION="1.0.0"
+VEYCRON_REPO="https://github.com/Pushpendra-999/veycron.git"
 
 # Resolve installation directory
 VEYCRON_BIN="$(cd "$(dirname "$0")" && pwd)"
@@ -24,7 +27,7 @@ VEYCRON_CONFIG_FILE="${VEYCRON_DATA_DIR}/config.json"
 VEYCRON_PROJECTS_DIR="${VEYCRON_DATA_DIR}/projects"
 
 # Export for child scripts
-export VEYCRON_VERSION VEYCRON_HOME VEYCRON_LIB VEYCRON_DATA_DIR
+export VEYCRON_VERSION VEYCRON_REPO VEYCRON_HOME VEYCRON_LIB VEYCRON_DATA_DIR
 export VEYCRON_LOG_DIR VEYCRON_TMP_DIR VEYCRON_CONFIG_FILE VEYCRON_PROJECTS_DIR
 
 # ── Load library modules ────────────────────────────────────────────────────
@@ -49,6 +52,8 @@ show_help() {
     ╚═══╝  ╚══════╝   ╚═╝    ╚═════╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝
 
   Automated Database Backup to Cloudflare R2
+  Copyright (c) 2026 veycron
+  All rights and ownership belong to https://github.com/Pushpendra-999/veycron.git
 
 USAGE:
     veycron <command> [options]
@@ -74,7 +79,8 @@ COMMANDS:
     delete <project>     Delete a project and its cron job
 
     doctor               Check system dependencies and health
-    version              Show version information
+    policy               Show copyright, ownership, and policy terms
+    version              Show version and ownership information
     help                 Show this help message
 
 EXAMPLES:
@@ -84,6 +90,7 @@ EXAMPLES:
     veycron smtp setup              # Configure email alerts
     veycron logs my-app             # View logs for 'my-app'
     veycron status                  # See all projects and their status
+    veycron policy                  # View copyright and policy terms
 
 HELP
 }
@@ -91,6 +98,32 @@ HELP
 # ── Version ──────────────────────────────────────────────────────────────────
 show_version() {
     echo "veycron v${VEYCRON_VERSION}"
+    echo "Copyright (c) 2026 veycron"
+    echo "All rights and ownership belong to ${VEYCRON_REPO}"
+}
+
+# ── Policy & Copyright ───────────────────────────────────────────────────────
+cmd_policy() {
+    local policy_file="${VEYCRON_HOME}/POLICY.md"
+    if [[ -f "$policy_file" ]]; then
+        cat "$policy_file"
+    else
+        echo ""
+        echo -e "${CYAN}${BOLD}veycron Copyright Terms & Policy${NC}"
+        echo "=========================================================="
+        echo "Copyright (c) 2026 veycron"
+        echo "All rights and ownership belong to https://github.com/Pushpendra-999/veycron.git"
+        echo ""
+        echo "Terms & Conditions:"
+        echo "1. Ownership: All rights, title, interest, and intellectual property"
+        echo "   belong exclusively to https://github.com/Pushpendra-999/veycron.git."
+        echo "2. Distribution: Permitted under MIT License provided all copyright"
+        echo "   and ownership notices remain intact."
+        echo "3. Privacy: 100% self-hosted, headless, zero telemetry, zero tracking."
+        echo "   Credentials and backups remain under user control."
+        echo "=========================================================="
+        echo ""
+    fi
 }
 
 # ── Doctor: check dependencies ───────────────────────────────────────────────
@@ -198,6 +231,9 @@ main() {
             ;;
         doctor)
             cmd_doctor "$@"
+            ;;
+        policy|terms|copyright)
+            cmd_policy "$@"
             ;;
         version|--version|-v)
             show_version

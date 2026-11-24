@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # ============================================================================
 # rclone.sh - Rclone configuration for Cloudflare R2
+# Copyright (c) 2026 veycron
+# All rights and ownership belong to https://github.com/Pushpendra-999/veycron.git
 # ============================================================================
 
 RCLONE_CONFIG="${VEYCRON_DATA_DIR}/rclone.conf"

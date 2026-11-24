@@ -13,6 +13,12 @@ A self-contained CLI service that schedules MongoDB and PostgreSQL database back
     ╚═══╝  ╚══════╝   ╚═╝    ╚═════╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝
 ```
 
+> **Copyright (c) 2026 veycron**  
+> **All rights and ownership belong to [https://github.com/Pushpendra-999/veycron.git](https://github.com/Pushpendra-999/veycron.git)**  
+> See [POLICY.md](POLICY.md) for full policy, terms of service, and privacy details.
+
+---
+
 ## Features
 
 - **Multi-database support** — PostgreSQL (`pg_dump`) and MongoDB (`mongodump`)
@@ -25,6 +31,7 @@ A self-contained CLI service that schedules MongoDB and PostgreSQL database back
 - **Interactive menu** — Full TUI menu or direct CLI commands
 - **Zero UI** — 100% terminal-based, designed for headless servers
 - **Install from GitHub** — One-line install, automatic updates
+- **100% Self-Hosted & Private** — Zero telemetry, credentials stored with restricted permissions
 
 ## Requirements
 
@@ -44,13 +51,13 @@ A self-contained CLI service that schedules MongoDB and PostgreSQL database back
 ### One-line install from GitHub
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/<your-user>/veycron/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/Pushpendra-999/veycron/main/install.sh | sudo bash
 ```
 
 ### Manual install
 
 ```bash
-git clone https://github.com/<your-user>/veycron.git /opt/veycron
+git clone https://github.com/Pushpendra-999/veycron.git /opt/veycron
 chmod +x /opt/veycron/bin/veycron
 ln -sf /opt/veycron/bin/veycron /usr/local/bin/veycron
 veycron init
@@ -118,7 +125,8 @@ veycron status
 | `veycron edit <name>`  | Edit a project's configuration         |
 | `veycron delete <name>`| Delete a project and its cron job      |
 | `veycron doctor`       | Check system dependencies and health   |
-| `veycron version`      | Show version                           |
+| `veycron policy`       | Display copyright terms & policy info  |
+| `veycron version`      | Show version and ownership details     |
 | `veycron help`         | Show help                              |
 
 ## Setup Wizard (`veycron new`)
@@ -154,6 +162,8 @@ Configure SMTP once globally; each project can have its own list of notification
 ├── lib/                    # Library modules
 ├── install.sh              # Installer
 ├── uninstall.sh            # Uninstaller
+├── POLICY.md               # Copyright terms & privacy policy
+├── LICENSE                 # License terms & ownership
 └── README.md
 
 /etc/veycron/               # Data (configs, logs, secrets)
@@ -189,6 +199,7 @@ bucket-name/
 - The `/etc/veycron` directory is `chmod 700`
 - Secrets are entered with no-echo prompts
 - Rclone uses a dedicated config file per installation
+- Zero external telemetry or tracking
 
 ## Uninstall
 
@@ -198,6 +209,9 @@ sudo bash /opt/veycron/uninstall.sh
 
 This removes the binary, symlink, and cron jobs. You'll be asked whether to keep the data directory.
 
-## License
+## Copyright, Ownership & Policy
 
-MIT
+- **Copyright (c) 2026 veycron**
+- **All rights and ownership belong to [https://github.com/Pushpendra-999/veycron.git](https://github.com/Pushpendra-999/veycron.git)**
+- Full policy and legal terms: [POLICY.md](POLICY.md)
+- Licensed under the [MIT License](LICENSE).

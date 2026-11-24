@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # ============================================================================
 # cron.sh - Cron job management for veycron
+# Copyright (c) 2026 veycron
+# All rights and ownership belong to https://github.com/Pushpendra-999/veycron.git
 # ============================================================================
 
 VEYCRON_CRON_TAG="# veycron-managed"

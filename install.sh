@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
 # ============================================================================
 # veycron installer
+# Copyright (c) 2026 veycron
+# All rights and ownership belong to https://github.com/Pushpendra-999/veycron.git
 # ============================================================================
 # Install from GitHub:
-#   curl -fsSL https://raw.githubusercontent.com/<user>/veycron/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/Pushpendra-999/veycron/main/install.sh | sudo bash
 # ============================================================================
 
 set -euo pipefail
 
 # ── Config ───────────────────────────────────────────────────────────────────
 
-REPO_URL="${VEYCRON_REPO_URL:-https://github.com/<user>/veycron}"
+REPO_URL="${VEYCRON_REPO_URL:-https://github.com/Pushpendra-999/veycron.git}"
 INSTALL_DIR="${VEYCRON_INSTALL_DIR:-/opt/veycron}"
 BIN_LINK="/usr/local/bin/veycron"
 BRANCH="${VEYCRON_BRANCH:-main}"
@@ -38,7 +40,7 @@ check_root() {
         echo ""
         echo "  sudo bash install.sh"
         echo "  or"
-        echo "  curl -fsSL <url>/install.sh | sudo bash"
+        echo "  curl -fsSL https://raw.githubusercontent.com/Pushpendra-999/veycron/main/install.sh | sudo bash"
         exit 1
     fi
 }
@@ -89,6 +91,7 @@ main() {
 BANNER
     echo -e "${NC}"
     echo -e "  ${DIM}Installer${NC}"
+    echo -e "  ${DIM}Copyright (c) 2026 veycron — All rights belong to https://github.com/Pushpendra-999/veycron.git${NC}"
     echo ""
 
     check_root
@@ -96,13 +99,13 @@ BANNER
 
     # ── Clone or update ──────────────────────────────────────────────────
     if [[ -d "$INSTALL_DIR" ]]; then
-        info "Updating existing installation..."
+        info "Updating existing installation from ${REPO_URL}..."
         cd "$INSTALL_DIR"
         git fetch origin "$BRANCH" --quiet
         git reset --hard "origin/${BRANCH}" --quiet
         success "Updated to latest version."
     else
-        info "Installing veycron to ${INSTALL_DIR}..."
+        info "Installing veycron from ${REPO_URL} to ${INSTALL_DIR}..."
         git clone --branch "$BRANCH" --depth 1 "$REPO_URL" "$INSTALL_DIR" --quiet
         success "Repository cloned."
     fi
@@ -123,11 +126,13 @@ BANNER
     # ── Done ─────────────────────────────────────────────────────────────
     echo ""
     echo -e "  ${GREEN}${BOLD}✔ veycron installed successfully!${NC}"
+    echo -e "  ${DIM}Official repository: https://github.com/Pushpendra-999/veycron.git${NC}"
     echo ""
     echo -e "  ${BOLD}Get started:${NC}"
     echo -e "    ${CYAN}veycron init${NC}        Initialize the service"
     echo -e "    ${CYAN}veycron new${NC}         Create a new backup project"
     echo -e "    ${CYAN}veycron menu${NC}        Open interactive menu"
+    echo -e "    ${CYAN}veycron policy${NC}      View copyright & policy terms"
     echo -e "    ${CYAN}veycron help${NC}        Show all commands"
     echo ""
 }
