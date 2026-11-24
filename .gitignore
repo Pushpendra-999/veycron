@@ -1,0 +1,16 @@
+# veycron .gitignore
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp files
+*.tmp
+*.swp
+*~
+
+# Data directory (if accidentally placed here)
+/data/
+
+# Templates directory (remove if not used)
+/templates/

@@ -1,0 +1,216 @@
+#!/usr/bin/env bash
+# ============================================================================
+# veycron - Automated Database Backup Service for Cloudflare R2
+# ============================================================================
+# A self-contained CLI service for scheduling MongoDB and PostgreSQL
+# database backups to Cloudflare R2 object storage with email notifications.
+# ============================================================================
+
+set -euo pipefail
+
+# Version
+VEYCRON_VERSION="1.0.0"
+
+# Resolve installation directory
+VEYCRON_BIN="$(cd "$(dirname "$0")" && pwd)"
+VEYCRON_HOME="$(dirname "$VEYCRON_BIN")"
+VEYCRON_LIB="${VEYCRON_HOME}/lib"
+
+# Data directories
+VEYCRON_DATA_DIR="${VEYCRON_DATA_DIR:-/etc/veycron}"
+VEYCRON_LOG_DIR="${VEYCRON_DATA_DIR}/logs"
+VEYCRON_TMP_DIR="${VEYCRON_DATA_DIR}/tmp"
+VEYCRON_CONFIG_FILE="${VEYCRON_DATA_DIR}/config.json"
+VEYCRON_PROJECTS_DIR="${VEYCRON_DATA_DIR}/projects"
+
+# Export for child scripts
+export VEYCRON_VERSION VEYCRON_HOME VEYCRON_LIB VEYCRON_DATA_DIR
+export VEYCRON_LOG_DIR VEYCRON_TMP_DIR VEYCRON_CONFIG_FILE VEYCRON_PROJECTS_DIR
+
+# ── Load library modules ────────────────────────────────────────────────────
+source "${VEYCRON_LIB}/utils.sh"
+source "${VEYCRON_LIB}/logger.sh"
+source "${VEYCRON_LIB}/config.sh"
+source "${VEYCRON_LIB}/rclone.sh"
+source "${VEYCRON_LIB}/backup.sh"
+source "${VEYCRON_LIB}/cron.sh"
+source "${VEYCRON_LIB}/smtp.sh"
+source "${VEYCRON_LIB}/menu.sh"
+
+# ── Help text ────────────────────────────────────────────────────────────────
+show_help() {
+    cat <<'HELP'
+
+  ██╗   ██╗███████╗██╗   ██╗ ██████╗██████╗  ██████╗ ███╗   ██╗
+  ██║   ██║██╔════╝╚██╗ ██╔╝██╔════╝██╔══██╗██╔═══██╗████╗  ██║
+  ██║   ██║█████╗   ╚████╔╝ ██║     ██████╔╝██║   ██║██╔██╗ ██║
+  ╚██╗ ██╔╝██╔══╝    ╚██╔╝  ██║     ██╔══██╗██║   ██║██║╚██╗██║
+   ╚████╔╝ ███████╗   ██║   ╚██████╗██║  ██║╚██████╔╝██║ ╚████║
+    ╚═══╝  ╚══════╝   ╚═╝    ╚═════╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝
+
+  Automated Database Backup to Cloudflare R2
+
+USAGE:
+    veycron <command> [options]
+
+COMMANDS:
+    init                 Initialize veycron (first-time setup of directories)
+    menu                 Open the interactive setup menu
+    new                  Create a new backup project (guided setup)
+    list                 List all configured backup projects
+    status               Show status of all backup jobs and cron
+    run <project>        Manually trigger a backup for a project
+    logs [project]       Show logs (all or for a specific project)
+
+    smtp setup           Configure SMTP email settings
+    smtp status          Show current SMTP configuration status
+    smtp test            Send a test email
+
+    cron status          Show cron job status
+    cron enable <proj>   Enable cron schedule for a project
+    cron disable <proj>  Disable cron schedule for a project
+
+    edit <project>       Edit a project's configuration
+    delete <project>     Delete a project and its cron job
+
+    doctor               Check system dependencies and health
+    version              Show version information
+    help                 Show this help message
+
+EXAMPLES:
+    veycron init                    # First-time setup
+    veycron new                     # Create a new backup project
+    veycron run my-app              # Manually backup 'my-app'
+    veycron smtp setup              # Configure email alerts
+    veycron logs my-app             # View logs for 'my-app'
+    veycron status                  # See all projects and their status
+
+HELP
+}
+
+# ── Version ──────────────────────────────────────────────────────────────────
+show_version() {
+    echo "veycron v${VEYCRON_VERSION}"
+}
+
+# ── Doctor: check dependencies ───────────────────────────────────────────────
+cmd_doctor() {
+    log_header "veycron System Health Check"
+    echo ""
+
+    local all_ok=true
+
+    # Required
+    check_dependency "bash" "required" || all_ok=false
+    check_dependency "crontab" "required" || all_ok=false
+    check_dependency "curl" "required" || all_ok=false
+    check_dependency "jq" "required" || all_ok=false
+    check_dependency "rclone" "required" || all_ok=false
+
+    echo ""
+    # Database tools (at least one needed)
+    log_info "Database Tools (at least one required):"
+    check_dependency "pg_dump" "optional"
+    check_dependency "mongodump" "optional"
+
+    echo ""
+    # Optional
+    log_info "Optional Tools:"
+    check_dependency "gzip" "optional"
+    check_dependency "openssl" "optional"
+
+    echo ""
+    # Check data directory
+    if [[ -d "$VEYCRON_DATA_DIR" ]]; then
+        print_status "ok" "Data directory: ${VEYCRON_DATA_DIR}"
+    else
+        print_status "warn" "Data directory not found. Run 'veycron init' first."
+        all_ok=false
+    fi
+
+    # Check rclone config
+    if rclone_configured; then
+        print_status "ok" "Rclone R2 remote configured"
+    else
+        print_status "warn" "Rclone R2 remote not configured. Run 'veycron new' to set up."
+    fi
+
+    echo ""
+    if $all_ok; then
+        log_success "All checks passed!"
+    else
+        log_warn "Some checks failed. Please install missing dependencies."
+    fi
+}
+
+# ── Main entrypoint ─────────────────────────────────────────────────────────
+main() {
+    local command="${1:-help}"
+    shift || true
+
+    case "$command" in
+        init)
+            cmd_init "$@"
+            ;;
+        menu)
+            cmd_menu "$@"
+            ;;
+        new)
+            cmd_new_project "$@"
+            ;;
+        list)
+            cmd_list_projects "$@"
+            ;;
+        status)
+            cmd_status "$@"
+            ;;
+        run)
+            cmd_run_backup "$@"
+            ;;
+        logs)
+            cmd_logs "$@"
+            ;;
+        smtp)
+            local subcmd="${1:-help}"
+            shift || true
+            case "$subcmd" in
+                setup)  cmd_smtp_setup "$@" ;;
+                status) cmd_smtp_status "$@" ;;
+                test)   cmd_smtp_test "$@" ;;
+                *)      log_error "Unknown smtp command: $subcmd. Use: setup, status, test" ;;
+            esac
+            ;;
+        cron)
+            local subcmd="${1:-help}"
+            shift || true
+            case "$subcmd" in
+                status)  cmd_cron_status "$@" ;;
+                enable)  cmd_cron_enable "$@" ;;
+                disable) cmd_cron_disable "$@" ;;
+                *)       log_error "Unknown cron command: $subcmd. Use: status, enable, disable" ;;
+            esac
+            ;;
+        edit)
+            cmd_edit_project "$@"
+            ;;
+        delete)
+            cmd_delete_project "$@"
+            ;;
+        doctor)
+            cmd_doctor "$@"
+            ;;
+        version|--version|-v)
+            show_version
+            ;;
+        help|--help|-h)
+            show_help
+            ;;
+        *)
+            log_error "Unknown command: $command"
+            echo "Run 'veycron help' for usage information."
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"
