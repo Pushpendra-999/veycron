@@ -51,7 +51,7 @@ A self-contained CLI service that schedules MongoDB and PostgreSQL database back
 ### One-line install from GitHub
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Pushpendra-999/veycron/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/Pushpendra-999/veycron/master/install.sh | sudo bash
 ```
 
 ### Manual install

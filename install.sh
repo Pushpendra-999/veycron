@@ -5,7 +5,7 @@
 # All rights and ownership belong to https://github.com/Pushpendra-999/veycron.git
 # ============================================================================
 # Install from GitHub:
-#   curl -fsSL https://raw.githubusercontent.com/Pushpendra-999/veycron/main/install.sh | sudo bash
+#   curl -fsSL https://raw.githubusercontent.com/Pushpendra-999/veycron/master/install.sh | sudo bash
 # ============================================================================
 
 set -euo pipefail
@@ -15,7 +15,7 @@ set -euo pipefail
 REPO_URL="${VEYCRON_REPO_URL:-https://github.com/Pushpendra-999/veycron.git}"
 INSTALL_DIR="${VEYCRON_INSTALL_DIR:-/opt/veycron}"
 BIN_LINK="/usr/local/bin/veycron"
-BRANCH="${VEYCRON_BRANCH:-main}"
+BRANCH="${VEYCRON_BRANCH:-master}"
 
 # ── Colors ───────────────────────────────────────────────────────────────────
 
@@ -40,7 +40,7 @@ check_root() {
         echo ""
         echo "  sudo bash install.sh"
         echo "  or"
-        echo "  curl -fsSL https://raw.githubusercontent.com/Pushpendra-999/veycron/main/install.sh | sudo bash"
+        echo "  curl -fsSL https://raw.githubusercontent.com/Pushpendra-999/veycron/master/install.sh | sudo bash"
         exit 1
     fi
 }
