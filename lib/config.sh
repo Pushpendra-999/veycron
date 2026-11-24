@@ -118,6 +118,8 @@ create_project_config() {
     local retention="${11:-30}"
     local notify_emails="${12:-}"
     local compress="${13:-true}"
+    local exclude_schema="${14:-}"
+    local schema="${15:-}"
 
     local project_file="${VEYCRON_PROJECTS_DIR}/${project_name}.json"
 
@@ -129,7 +131,9 @@ create_project_config() {
     "database": {
         "type": "${db_type}",
         "uri": "${db_uri}",
-        "name": "${db_name}"
+        "name": "${db_name}",
+        "exclude_schema": "${exclude_schema}",
+        "schema": "${schema}"
     },
     "r2": {
         "bucket": "${r2_bucket}",
@@ -259,6 +263,14 @@ cmd_new_project() {
     local db_name=""
     prompt_required "Database name to backup" db_name
 
+    local exclude_schema="" schema=""
+    if [[ "$db_type" == "postgresql" ]]; then
+        echo ""
+        echo -e "  ${DIM}Schema filtering (optional):${NC}"
+        prompt_optional "Exclude schema(s) (e.g. drizzle)" exclude_schema ""
+        prompt_optional "Include schema(s) only (leave blank for all)" schema ""
+    fi
+
     # Step 3: Cloudflare R2 configuration
     echo ""
     print_separator
@@ -350,7 +362,8 @@ cmd_new_project() {
     create_project_config \
         "$project_name" "$db_type" "$db_uri" "$db_name" \
         "$r2_bucket" "$r2_access_key" "$r2_secret_key" "$r2_endpoint" \
-        "$r2_region" "$schedule" "$retention" "$notify_emails" "$compress"
+        "$r2_region" "$schedule" "$retention" "$notify_emails" "$compress" \
+        "$exclude_schema" "$schema"
 
     log_success "Project '${project_name}' created!"
 
@@ -484,7 +497,8 @@ cmd_edit_project() {
     echo ""
 
     # Load current values
-    local cur_schedule cur_retention cur_compress cur_emails
+    local cur_schedule cur_retention cur_compress cur_emails db_type
+    db_type="$(json_get "$conf" '.database.type')"
     cur_schedule="$(json_get "$conf" '.schedule.cron')"
     cur_retention="$(json_get "$conf" '.backup.retention_days')"
     cur_compress="$(json_get "$conf" '.backup.compress')"
@@ -497,13 +511,24 @@ cmd_edit_project() {
     local new_emails=""
     prompt_optional "Notification emails (comma-separated)" new_emails "$cur_emails"
 
+    local new_exclude_schema="" new_schema=""
+    local cur_exclude_schema="" cur_schema=""
+    if [[ "$db_type" == "postgresql" ]]; then
+        cur_exclude_schema="$(json_get "$conf" '.database.exclude_schema')"
+        cur_schema="$(json_get "$conf" '.database.schema')"
+        prompt_optional "Exclude schema(s) (e.g. drizzle)" new_exclude_schema "$cur_exclude_schema"
+        prompt_optional "Include schema(s) only (leave blank for all)" new_schema "$cur_schema"
+    fi
+
     # Apply changes
     local tmp
     tmp="$(mktemp)"
-    jq ".schedule.cron = \$sched | .backup.retention_days = (\$ret | tonumber) | .notifications.emails = (\$emails | split(\",\") | map(select(. != \"\"))) | .notifications.enabled = (\$emails | length > 0) | .updated_at = \$ts" \
+    jq ".schedule.cron = \$sched | .backup.retention_days = (\$ret | tonumber) | .notifications.emails = (\$emails | split(\",\") | map(select(. != \"\"))) | .notifications.enabled = (\$emails | length > 0) | .database.exclude_schema = \$ex_schema | .database.schema = \$in_schema | .updated_at = \$ts" \
         --arg sched "$new_schedule" \
         --arg ret "$new_retention" \
         --arg emails "$new_emails" \
+        --arg ex_schema "$new_exclude_schema" \
+        --arg in_schema "$new_schema" \
         --arg ts "$(timestamp_iso)" \
         "$conf" > "$tmp" && mv "$tmp" "$conf"
     chmod 600 "$conf"

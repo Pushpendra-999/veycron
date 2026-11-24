@@ -21,11 +21,13 @@ cmd_run_backup() {
     fi
 
     local conf="${VEYCRON_PROJECTS_DIR}/${project_name}.json"
-    local db_type db_uri db_name compress retention
+    local db_type db_uri db_name compress retention exclude_schema schema
 
     db_type="$(json_get "$conf" '.database.type')"
     db_uri="$(json_get "$conf" '.database.uri')"
     db_name="$(json_get "$conf" '.database.name')"
+    exclude_schema="$(json_get "$conf" '.database.exclude_schema')"
+    schema="$(json_get "$conf" '.database.schema')"
     compress="$(json_get "$conf" '.backup.compress')"
     retention="$(json_get "$conf" '.backup.retention_days')"
 
@@ -50,7 +52,7 @@ cmd_run_backup() {
     case "$db_type" in
         postgresql)
             backup_file="${backup_dir}/${project_name}_${ts}.sql"
-            if dump_postgresql "$db_uri" "$db_name" "$backup_file" "$project_name"; then
+            if dump_postgresql "$db_uri" "$db_name" "$backup_file" "$project_name" "$exclude_schema" "$schema"; then
                 backup_success=true
             fi
             ;;
@@ -133,6 +135,8 @@ dump_postgresql() {
     local db_name="$2"
     local output_file="$3"
     local project_name="$4"
+    local exclude_schema="${5:-}"
+    local schema="${6:-}"
 
     if ! command -v pg_dump &>/dev/null; then
         log_both "ERROR" "pg_dump not found. Install PostgreSQL client tools." "$project_name"
@@ -141,12 +145,33 @@ dump_postgresql() {
 
     log_both "INFO" "Dumping PostgreSQL database: ${db_name}" "$project_name"
 
-    if pg_dump "$uri" \
-        --format=plain \
-        --no-owner \
-        --no-privileges \
-        --verbose \
-        --file="$output_file" \
+    local pg_opts=(
+        --format=plain
+        --no-owner
+        --no-privileges
+        --verbose
+        --file="$output_file"
+    )
+
+    if [[ -n "$schema" ]]; then
+        IFS=',' read -ra IN_SCHEMAS <<< "$schema"
+        for s in "${IN_SCHEMAS[@]}"; do
+            s="$(echo "$s" | tr -d ' ')"
+            [[ -n "$s" ]] && pg_opts+=(--schema="$s")
+        done
+        log_both "INFO" "Target schema(s): ${schema}" "$project_name"
+    fi
+
+    if [[ -n "$exclude_schema" ]]; then
+        IFS=',' read -ra EX_SCHEMAS <<< "$exclude_schema"
+        for s in "${EX_SCHEMAS[@]}"; do
+            s="$(echo "$s" | tr -d ' ')"
+            [[ -n "$s" ]] && pg_opts+=(--exclude-schema="$s")
+        done
+        log_both "INFO" "Excluding schema(s): ${exclude_schema}" "$project_name"
+    fi
+
+    if pg_dump "$uri" "${pg_opts[@]}" \
         2>&1 | while IFS= read -r line; do
             log_to_file "DEBUG" "pg_dump: $line" "$project_name"
         done; then
